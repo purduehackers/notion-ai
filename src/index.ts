@@ -8,8 +8,8 @@ import { buildFiles } from "./services/filesystem.ts";
 import { runAgent } from "./agent.ts";
 
 const tursoUrl = env.TURSO_AUTH_TOKEN
-	? `${env.TURSO_DATABASE_URL}?authToken=${env.TURSO_AUTH_TOKEN}`
-	: env.TURSO_DATABASE_URL;
+  ? `${env.TURSO_DATABASE_URL}?authToken=${env.TURSO_AUTH_TOKEN}`
+  : env.TURSO_DATABASE_URL;
 const db = new Database(tursoUrl);
 await db.connect();
 
@@ -20,15 +20,15 @@ const cache = new CacheService(agent);
 const app = new Hono();
 
 app.post("/query", async (c) => {
-	const body = await c.req.json<{ prompt: string }>();
-	if (!body.prompt) {
-		return c.json({ error: "Missing 'prompt' in request body" }, 400);
-	}
+  const body = await c.req.json<{ prompt: string }>();
+  if (!body.prompt) {
+    return c.json({ error: "Missing 'prompt' in request body" }, 400);
+  }
 
-	const files = await buildFiles(client, cache);
-	const result = await runAgent(body.prompt, files);
+  const files = await buildFiles(client, cache);
+  const result = await runAgent(body.prompt, files);
 
-	return c.json({ result });
+  return c.json({ result });
 });
 
 export default app;

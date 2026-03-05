@@ -1,10 +1,7 @@
 import { generateText, stepCountIs } from "ai";
 import { createBashTool } from "bash-tool";
 
-export async function runAgent(
-  prompt: string,
-  files: Record<string, string>,
-): Promise<string> {
+export async function runAgent(prompt: string, files: Record<string, string>): Promise<string> {
   const { tools } = await createBashTool({
     files,
     destination: "/",
