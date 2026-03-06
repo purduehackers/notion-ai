@@ -18,7 +18,7 @@ export async function runAgent(
     ].join("\n"),
   });
 
-  const model = "anthropic/claude-opus-4-6";
+  const model = "anthropic/claude-haiku-4.5";
   const maxSteps = 30;
 
   log.set({ agent: { model, maxSteps } });
