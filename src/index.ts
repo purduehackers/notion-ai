@@ -2,12 +2,12 @@ import { AgentFS } from "agentfs-sdk";
 import { Hono } from "hono";
 import { bearerAuth } from "hono/bearer-auth";
 
-import { runAgent } from "./agent.ts";
-import { env } from "./env.ts";
-import { CacheService } from "./services/cache.ts";
-import { RemoteDatabase } from "./services/database.ts";
-import { reindex, loadFiles } from "./services/filesystem.ts";
-import { createNotionService } from "./services/notion.ts";
+import { runAgent } from "./agent";
+import { env } from "./env";
+import { CacheService } from "./services/cache";
+import { RemoteDatabase } from "./services/database";
+import { reindex, loadFiles } from "./services/filesystem";
+import { createNotionService } from "./services/notion";
 
 type DatabasePromise = Parameters<typeof AgentFS.openWith>[0];
 

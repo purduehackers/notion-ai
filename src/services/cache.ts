@@ -1,5 +1,5 @@
 import type { AgentFS } from "agentfs-sdk";
-import type { CachedPage } from "../types.ts";
+import type { CachedPage } from "../types";
 
 export class CacheService {
   constructor(private agent: AgentFS) {}

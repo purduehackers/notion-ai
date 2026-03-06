@@ -1,5 +1,5 @@
 import type { NotionFsClient, TreeNode } from "@rayhanadev/notion-fs";
-import type { CacheService } from "./cache.ts";
+import type { CacheService } from "./cache";
 
 interface PageInfo {
   id: string;
@@ -110,7 +110,9 @@ export async function reindex(
   };
 }
 
-export async function loadFiles(cache: CacheService): Promise<Record<string, string>> {
+export async function loadFiles(
+  cache: CacheService,
+): Promise<Record<string, string>> {
   const pages = await cache.getAll();
   const files: Record<string, string> = {};
   for (const page of pages) {
