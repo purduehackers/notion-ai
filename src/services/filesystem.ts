@@ -45,10 +45,10 @@ async function fetchBatch<T, R>(
   return results;
 }
 
-export async function buildFiles(
+export async function reindex(
   client: NotionFsClient,
   cache: CacheService,
-): Promise<Record<string, string>> {
+): Promise<{ fetched: number; cached: number; total: number }> {
   const trees = await Promise.all(
     Object.entries(ROOT_DOCUMENTS).map(async ([name, id]) => ({
       name,
@@ -62,7 +62,7 @@ export async function buildFiles(
   }
 
   const stalePages: PageInfo[] = [];
-  const freshPages: { page: PageInfo; content: string }[] = [];
+  let cachedCount = 0;
 
   await fetchBatch(
     allPages,
@@ -71,7 +71,7 @@ export async function buildFiles(
         const meta = await client.stat(page.id);
         const cached = await cache.get(page.id);
         if (cached && cached.lastEditedTime === meta.lastEditedTime) {
-          freshPages.push({ page, content: cached.content });
+          cachedCount++;
         } else {
           stalePages.push(page);
         }
@@ -96,7 +96,6 @@ export async function buildFiles(
           lastEditedTime: meta.lastEditedTime,
           cachedAt: new Date().toISOString(),
         });
-        freshPages.push({ page, content });
       } catch {
         // Skip pages that can't be read (databases, etc.)
       }
@@ -104,14 +103,20 @@ export async function buildFiles(
     10,
   );
 
+  return {
+    fetched: stalePages.length,
+    cached: cachedCount,
+    total: allPages.length,
+  };
+}
+
+export async function loadFiles(
+  cache: CacheService,
+): Promise<Record<string, string>> {
+  const pages = await cache.getAll();
   const files: Record<string, string> = {};
-  for (const { page, content } of freshPages) {
-    files[`${page.path}.md`] = content;
+  for (const page of pages) {
+    files[`${page.path}.md`] = page.content;
   }
-
-  console.log(
-    `Loaded ${freshPages.length} pages (${stalePages.length} fetched, ${freshPages.length - stalePages.length} cached)`,
-  );
-
   return files;
 }

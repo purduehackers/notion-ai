@@ -11,4 +11,9 @@ export class CacheService {
   async set(page: CachedPage): Promise<void> {
     await this.agent.kv.set(`page:${page.id}`, page);
   }
+
+  async getAll(): Promise<CachedPage[]> {
+    const entries = await this.agent.kv.list("page:");
+    return entries.map((e) => e.value as CachedPage);
+  }
 }
