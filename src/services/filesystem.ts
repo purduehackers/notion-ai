@@ -1,3 +1,4 @@
+import type { RequestLogger } from "evlog";
 import type { NotionFsClient, TreeNode } from "@rayhanadev/notion-fs";
 import type { CacheService } from "./cache";
 
@@ -48,7 +49,10 @@ async function fetchBatch<T, R>(
 export async function reindex(
   client: NotionFsClient,
   cache: CacheService,
+  log: RequestLogger,
 ): Promise<{ fetched: number; cached: number; total: number }> {
+  log.set({ reindex: { phase: "walking" } });
+
   const trees = await Promise.all(
     Object.entries(ROOT_DOCUMENTS).map(async ([name, id]) => ({
       name,
@@ -61,8 +65,11 @@ export async function reindex(
     allPages.push(...collectPages(tree, `/${name}`));
   }
 
+  log.set({ reindex: { phase: "diffing", totalPages: allPages.length } });
+
   const stalePages: PageInfo[] = [];
   let cachedCount = 0;
+  let errorCount = 0;
 
   await fetchBatch(
     allPages,
@@ -82,6 +89,10 @@ export async function reindex(
     10,
   );
 
+  log.set({
+    reindex: { phase: "fetching", stalePages: stalePages.length, cachedPages: cachedCount },
+  });
+
   await fetchBatch(
     stalePages,
     async (page) => {
@@ -97,11 +108,13 @@ export async function reindex(
           cachedAt: new Date().toISOString(),
         });
       } catch {
-        // Skip pages that can't be read (databases, etc.)
+        errorCount++;
       }
     },
     10,
   );
+
+  log.set({ reindex: { phase: "done", skippedPages: errorCount } });
 
   return {
     fetched: stalePages.length,
@@ -112,11 +125,13 @@ export async function reindex(
 
 export async function loadFiles(
   cache: CacheService,
+  log: RequestLogger,
 ): Promise<Record<string, string>> {
   const pages = await cache.getAll();
   const files: Record<string, string> = {};
   for (const page of pages) {
     files[`${page.path}.md`] = page.content;
   }
+  log.set({ files: { count: Object.keys(files).length } });
   return files;
 }

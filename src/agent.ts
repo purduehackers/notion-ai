@@ -1,7 +1,12 @@
 import { generateText, stepCountIs } from "ai";
 import { createBashTool } from "bash-tool";
+import type { RequestLogger } from "evlog";
 
-export async function runAgent(prompt: string, files: Record<string, string>): Promise<string> {
+export async function runAgent(
+  prompt: string,
+  files: Record<string, string>,
+  log: RequestLogger,
+): Promise<string> {
   const { tools } = await createBashTool({
     files,
     destination: "/",
@@ -13,10 +18,15 @@ export async function runAgent(prompt: string, files: Record<string, string>): P
     ].join("\n"),
   });
 
+  const model = "anthropic/claude-opus-4-6";
+  const maxSteps = 30;
+
+  log.set({ agent: { model, maxSteps } });
+
   const result = await generateText({
-    model: "anthropic/claude-opus-4-6",
+    model,
     tools,
-    stopWhen: stepCountIs(30),
+    stopWhen: stepCountIs(maxSteps),
     system: [
       "You are a helpful assistant that explores Purdue Hackers' Notion workspace.",
       "The workspace is mounted as a filesystem. Use bash commands to navigate and search.",
@@ -24,6 +34,47 @@ export async function runAgent(prompt: string, files: Record<string, string>): P
       "When answering questions, cite the specific pages you found information in.",
     ].join("\n"),
     prompt,
+    experimental_onStepStart: (event) => {
+      log.info(`step ${event.stepNumber} started`);
+    },
+    experimental_onToolCallStart: (event) => {
+      log.info(`tool call: ${event.toolCall.toolName}`, {
+        input: event.toolCall.input,
+      });
+    },
+    experimental_onToolCallFinish: (event) => {
+      if (event.success) {
+        log.info(
+          `tool done: ${event.toolCall.toolName} (${event.durationMs}ms)`,
+        );
+      } else {
+        log.error(
+          `tool failed: ${event.toolCall.toolName} (${event.durationMs}ms)`,
+          { error: event.error },
+        );
+      }
+    },
+    onStepFinish: (event) => {
+      log.info(`step ${event.stepNumber} finished`, {
+        finishReason: event.finishReason,
+        usage: {
+          inputTokens: event.usage.inputTokens,
+          outputTokens: event.usage.outputTokens,
+        },
+      });
+    },
+    onFinish: (event) => {
+      log.set({
+        agent: {
+          steps: event.steps.length,
+          finishReason: event.finishReason,
+          usage: {
+            inputTokens: event.totalUsage.inputTokens,
+            outputTokens: event.totalUsage.outputTokens,
+          },
+        },
+      });
+    },
   });
 
   return result.text;
