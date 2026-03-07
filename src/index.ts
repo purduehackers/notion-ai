@@ -14,7 +14,7 @@ import { createNotionService } from "./services/notion";
 
 initLogger({
   env: { service: "notion-ai" },
-  pretty: true,
+  pretty: process.env.NODE_ENV === "development" ? true : false,
 });
 
 type DatabasePromise = Parameters<typeof AgentFS.openWith>[0];
@@ -44,10 +44,10 @@ app.get("/", (c) => {
   return c.text("ദ്ദി(｡•̀ ,<)~✩‧₊");
 });
 
-app.use("/reindex", bearerAuth({ token: env.CRON_SECRET }));
+app.use("/sync", bearerAuth({ token: env.CRON_SECRET }));
 app.use("/query", bearerAuth({ token: env.API_KEY }));
 
-app.post("/reindex", async (c) => {
+app.get("/sync", async (c) => {
   const log = c.get("log");
   log.set({ route: "reindex" });
 
