@@ -5,7 +5,7 @@ import { Hono } from "hono";
 import { bearerAuth } from "hono/bearer-auth";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 
-import { runAgent } from "./agent";
+import { runAgent, streamAgent } from "./agent";
 import { env } from "./env";
 import { CacheService } from "./services/cache";
 import { RemoteDatabase } from "./services/database";
@@ -46,6 +46,7 @@ app.get("/", (c) => {
 
 app.use("/sync", bearerAuth({ token: env.CRON_SECRET }));
 app.use("/query", bearerAuth({ token: env.API_KEY }));
+app.use("/query/stream", bearerAuth({ token: env.API_KEY }));
 
 app.get("/sync", async (c) => {
   const log = c.get("log");
@@ -79,6 +80,28 @@ app.post("/query", async (c) => {
   log.set({ query: { resultLength: result.length } });
 
   return c.json({ result });
+});
+
+app.post("/query/stream", async (c) => {
+  const log = c.get("log");
+  log.set({ route: "query/stream" });
+
+  const body = await c.req.json<{ prompt: string }>();
+  if (!body.prompt) {
+    throw createError({
+      message: "Missing 'prompt' in request body",
+      status: 400,
+      why: "The request body must contain a 'prompt' field",
+      fix: "Send a JSON body with a 'prompt' string field",
+    });
+  }
+
+  log.set({ query: { promptLength: body.prompt.length } });
+
+  const files = await loadFiles(cache, log);
+  const result = await streamAgent(body.prompt, files, log);
+
+  return result.toTextStreamResponse();
 });
 
 export default app;
